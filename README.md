@@ -1,6 +1,6 @@
-# Refrigerator Event Stream
+# Fridge Sage
 
-A REST API service for managing refrigerator inventory with expiration tracking and semantic search — built to demonstrate running **ChromaDB locally** with sentence-transformer embeddings.
+A REST API service for managing refrigerator inventory with expiration tracking, semantic search, and local AI Q&A — built to demonstrate **ChromaDB**, **sentence-transformer embeddings**, and **RAG with a local LLM**, all without external API calls.
 
 ## Features
 
@@ -43,7 +43,7 @@ The `ASK_*` variables are only relevant if you use the `/ask` endpoint (see belo
 ```bash
 # Clone and install dependencies
 git clone <repo-url>
-cd refrigerator_event_stream
+cd fridge-sage
 uv sync
 
 # Run the server

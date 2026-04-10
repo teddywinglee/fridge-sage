@@ -13,8 +13,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Refrigerator Event Stream",
-    description="Manage your refrigerator items with expiration tracking and semantic search",
+    title="Fridge Sage",
+    description="Manage your refrigerator items with expiration tracking, semantic search, and local AI Q&A",
     version="0.1.0",
     lifespan=lifespan,
 )

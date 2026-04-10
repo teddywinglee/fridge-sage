@@ -1,5 +1,5 @@
 [project]
-name = "refrigerator-event-stream"
+name = "fridge-sage"
 version = "0.1.0"
 description = "Manage your refrigerator items with expiration tracking and semantic search"
 requires-python = ">=3.14"
