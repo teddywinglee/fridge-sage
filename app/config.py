@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ask_base_url: str = "http://localhost:1234/v1"
     ask_model: str = "gemma-4-26b-a4b-it-GGUF"
     ask_max_tokens: int = 1024
+    ingest_default_shelf_life_days: int = 7
 
     @property
     def database_path(self) -> Path:

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import init_db
-from app.routers import ask, events, items, search, system
+from app.routers import ask, events, ingest, items, search, system
 
 
 @asynccontextmanager
@@ -24,3 +24,4 @@ app.include_router(items.router)
 app.include_router(events.router)
 app.include_router(search.router)
 app.include_router(ask.router)
+app.include_router(ingest.router)

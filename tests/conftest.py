@@ -18,7 +18,8 @@ def client(tmp_path):
     with patch("app.config.settings", test_settings), \
          patch("app.database.settings", test_settings), \
          patch("app.services.vector_store.settings", test_settings), \
-         patch("app.services.ask_service.settings", test_settings):
+         patch("app.services.ask_service.settings", test_settings), \
+         patch("app.services.ingest_service.settings", test_settings):
         from app.main import app
         with TestClient(app) as c:
             yield c

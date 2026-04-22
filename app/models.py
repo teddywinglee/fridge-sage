@@ -60,3 +60,12 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: list[str] = Field(default_factory=list, description="IDs of items used as context")
+
+
+class IngestRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=1000)
+
+
+class IngestResponse(BaseModel):
+    items: list[ItemResponse]
+    raw_text: str
