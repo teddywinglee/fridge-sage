@@ -8,6 +8,7 @@ A REST API service for managing refrigerator inventory with expiration tracking,
 - Track expiration dates and get alerts for expired or soon-to-expire items
 - Extend expiration dates on items you know are still good
 - **Semantic search** powered by ChromaDB + `all-MiniLM-L6-v2` embeddings (e.g. search "dairy products" to find milk, cheese, yogurt)
+- **Natural language ingest** — describe what you bought in plain text and the local LLM extracts and inserts each item automatically, with expiration dates estimated from a built-in shelf-life table
 - Automatic event log on every CRUD operation
 
 ## Tech Stack
@@ -33,8 +34,9 @@ All settings can be overridden via environment variables (or a `.env` file):
 | `ASK_BASE_URL` | `http://localhost:1234/v1` | Base URL of an OpenAI-compatible LLM server |
 | `ASK_MODEL` | `gemma-4-26b-a4b-it-GGUF` | Model name to pass to the LLM server |
 | `ASK_MAX_TOKENS` | `1024` | Max tokens for LLM responses |
+| `INGEST_DEFAULT_SHELF_LIFE_DAYS` | `7` | Fallback shelf-life (days) when item name matches no known keyword |
 
-The `ASK_*` variables are only relevant if you use the `/ask` endpoint (see below).
+The `ASK_*` and `INGEST_*` variables are only relevant if you use the `/ask` or `/ingest` endpoints (see below).
 
 ## Getting Started
 
@@ -84,7 +86,13 @@ Data is persisted locally under `data/`:
 |---|---|---|
 | `POST` | `/api/v1/ask` | Ask a natural language question about your fridge contents |
 
-Requires a running OpenAI-compatible LLM server (see [Local LLM Setup](#local-llm-setup) below).
+### Ingest
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/ingest` | Describe what you bought in plain text; items are extracted and inserted automatically |
+
+Both `/ask` and `/ingest` require a running OpenAI-compatible LLM server (see [Local LLM Setup](#local-llm-setup) below).
 
 ### Events
 
@@ -115,6 +123,11 @@ curl -X POST http://localhost:8000/api/v1/items/<id>/extend \
 curl -X POST http://localhost:8000/api/v1/ask \
   -H "Content-Type: application/json" \
   -d '{"question": "What should I use up before it expires?"}'
+
+# Ingest a free-text shopping description (requires local LLM server)
+curl -X POST http://localhost:8000/api/v1/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I bought a dozen eggs, some low-fat milk, and a bunch of spinach"}'
 ```
 
 ## Local LLM Setup
@@ -127,6 +140,8 @@ The `/ask` endpoint is optional — the rest of the API works without it. To ena
 3. Start the local server (default: `http://localhost:1234/v1`)
 4. Set `ASK_MODEL` to match the model identifier shown in LM Studio
 
+The same server is used for both `/ask` and `/ingest`.
+
 **[Ollama](https://ollama.com/)** works too — set `ASK_BASE_URL=http://localhost:11434/v1` and `ASK_MODEL` to your pulled model name.
 
 > **WSL2 users:** If the LLM server is running on Windows and your project is inside WSL2, `localhost` won't resolve to the Windows host by default. Enable mirrored networking by adding the following to `C:\Users\<you>\.wslconfig`, then run `wsl --shutdown` and reopen:
@@ -134,6 +149,16 @@ The `/ask` endpoint is optional — the rest of the API works without it. To ena
 > [wsl2]
 > networkingMode=mirrored
 > ```
+
+### How `/ingest` works
+
+Send a plain-text description of what you bought, and the endpoint does the rest:
+
+1. The local LLM parses the text and returns a structured JSON array — each element has a `name`, `category`, `quantity`, `unit`, and optional `notes`.
+2. For each extracted item, the service looks up its name against a built-in shelf-life table (e.g. chicken → 2 days, milk → 7 days) and sets `expires_at` automatically. Items that don't match any keyword fall back to `INGEST_DEFAULT_SHELF_LIFE_DAYS`.
+3. Each item is inserted via the normal item creation path — SQLite, ChromaDB, and the event log are all updated.
+
+The response includes the full `ItemResponse` for every item that was created, plus the original `raw_text` for reference.
 
 ### How `/ask` works
 

@@ -44,16 +44,19 @@ app/
     events.py          # Read-only event log
     search.py          # Semantic search endpoint
     ask.py             # RAG Q&A endpoint; delegates to ask_service
+    ingest.py          # Text-to-items endpoint; delegates to ingest_service
     system.py          # GET /health
   services/
     item_service.py    # Business logic; calls vector_store + event_service after each mutation
     event_service.py   # log_event() + list_events()
     vector_store.py    # ChromaDB wrapper: upsert/delete/search
     ask_service.py     # RAG pipeline: hybrid retrieval (_retrieve_context) + local LLM call
+    ingest_service.py  # Text → item extraction via LLM + shelf-life lookup + bulk item creation
 tests/
   conftest.py               # `client` fixture using tmp_path + Settings override + mock patches
   test_items.py             # Item CRUD + event log integration tests
   test_search.py            # Semantic search tests
+  test_ingest.py            # Ingest endpoint tests (mocks LLM call)
   test_retrieval_eval.py    # Hit-rate eval; calls ask_service._retrieve_context() directly
   test_generation_eval.py   # LLM-as-judge eval; requires local LLM server (pytest -m llm)
 ```
@@ -67,7 +70,7 @@ tests/
 - **Event types:** `ITEM_ADDED`, `ITEM_UPDATED`, `ITEM_REMOVED`, `EXPIRATION_EXTENDED`. Events are immutable; never delete them.
 - **IDs:** items use `uuid4` strings; events use SQLite autoincrement integers.
 - **ChromaDB document format:** `"{name}. category: {category}. {notes}"` — see `vector_store.build_document()`. Changing this affects search relevance.
-- **Settings override pattern:** Tests patch `app.config.settings`, `app.database.settings`, and `app.services.vector_store.settings` in `conftest.py` — if you add a new module that imports `settings` at module level, add it to the patch list.
+- **Settings override pattern:** Tests patch `app.config.settings`, `app.database.settings`, `app.services.vector_store.settings`, `app.services.ask_service.settings`, and `app.services.ingest_service.settings` in `conftest.py` — if you add a new module that imports `settings` at module level, add it to the patch list.
 
 ## Data Persistence
 
@@ -93,6 +96,7 @@ The `data/` directory is created automatically on startup via `settings.database
 | GET | `/api/v1/events` | List events (query: `item_id`, `event_type`, `limit`) |
 | GET | `/api/v1/search` | Semantic search (query: `q`, `n_results`) |
 | POST | `/api/v1/ask` | RAG Q&A (body: `question`); requires local LLM server |
+| POST | `/api/v1/ingest` | Parse free-text description into items and insert them; requires local LLM server |
 
 ## Testing Notes
 
@@ -102,3 +106,4 @@ The `data/` directory is created automatically on startup via `settings.database
 - The `database.init_db()` call happens in the FastAPI `lifespan`, which `TestClient.__enter__` triggers.
 - `test_retrieval_eval.py` calls `ask_service._retrieve_context()` directly (no LLM needed); runs in the normal test suite.
 - `test_generation_eval.py` is marked `@pytest.mark.llm` and requires a local LLM server. Run with `uv run pytest -m llm -s`. The `conftest.py` patches `app.services.ask_service.settings` — keep this in sync if ask_service gains new top-level settings imports.
+- `test_ingest.py` mocks the LLM call (`ingest_service._parse_with_llm`) so it runs without a local server. `ingest_service.settings` is patched in `conftest.py`; add it if you add new top-level settings imports to that module.
